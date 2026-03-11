@@ -6,7 +6,7 @@
 
 namespace {
 
-class ThrowScanner : public clang::RecursiveASTVisitor<ThrowScanner>{
+class ThrowScanner : public clang::RecursiveASTVisitor<ThrowScanner> {
 public:
   bool found = false;
 
@@ -20,49 +20,49 @@ public:
   }
   bool VisitCallExpr(clang::CallExpr *E) {
     if (clang::FunctionDecl *Callee = E->getDirectCallee()) {
-        
-        const auto *ftp = Callee->getType()->getAs<clang::FunctionProtoType>();
-        if (ftp && ftp->getExceptionSpecType() != clang::EST_BasicNoexcept) {
-            found = true;
-            return false;
-        }
+
+      const auto *ftp = Callee->getType()->getAs<clang::FunctionProtoType>();
+      if (ftp && ftp->getExceptionSpecType() != clang::EST_BasicNoexcept) {
+        found = true;
+        return false;
+      }
     }
     return true;
   }
-
 };
 
-class SmyshlaevAVisitor final : public clang::RecursiveASTVisitor<SmyshlaevAVisitor> {
+class SmyshlaevAVisitor final
+    : public clang::RecursiveASTVisitor<SmyshlaevAVisitor> {
 public:
   explicit SmyshlaevAVisitor(clang::ASTContext *context) : m_context(context) {}
   llvm::SmallPtrSet<const clang::FunctionDecl *, 16> DangerousFunctions;
   bool VisitFunctionDecl(clang::FunctionDecl *func) {
 
-    if (!func->hasBody()) return true;
+    if (!func->hasBody())
+      return true;
 
-    const auto* ftp = func->getType()->getAs<clang::FunctionProtoType>();
-    if(!ftp) return true;
-    if(ftp->getExceptionSpecType() != clang::EST_None) return true;
+    const auto *ftp = func->getType()->getAs<clang::FunctionProtoType>();
+    if (!ftp)
+      return true;
+    if (ftp->getExceptionSpecType() != clang::EST_None)
+      return true;
 
     ThrowScanner scanner;
     scanner.TraverseStmt(func->getBody());
     if (!scanner.found) {
-        clang::FunctionProtoType::ExtProtoInfo epi = ftp->getExtProtoInfo();
-        epi.ExceptionSpec.Type = clang::EST_BasicNoexcept;
+      clang::FunctionProtoType::ExtProtoInfo epi = ftp->getExtProtoInfo();
+      epi.ExceptionSpec.Type = clang::EST_BasicNoexcept;
 
-        clang::QualType newType = m_context->getFunctionType(
-            ftp->getReturnType(), 
-            ftp->getParamTypes(), 
-            epi
-        );
-        func->setType(newType);
-        llvm::outs() << "Функция " << func->getNameAsString() << " теперь noexcept!\n";
+      clang::QualType newType = m_context->getFunctionType(
+          ftp->getReturnType(), ftp->getParamTypes(), epi);
+      func->setType(newType);
+      llvm::outs() << "Функция " << func->getNameAsString()
+                   << " теперь noexcept!\n";
+    } else {
+      llvm::outs() << "Функция " << func->getNameAsString()
+                   << " осталась неизмененной\n";
     }
-    else{
-      llvm::outs() << "Функция " << func->getNameAsString() << " осталась неизмененной\n";
-    }
-    
-    
+
     return true;
   }
 
@@ -72,7 +72,8 @@ private:
 
 class SmyshlaevAConsumer final : public clang::ASTConsumer {
 public:
-  explicit SmyshlaevAConsumer(clang::ASTContext *context) : m_visitor(context) {}
+  explicit SmyshlaevAConsumer(clang::ASTContext *context)
+      : m_visitor(context) {}
 
   void HandleTranslationUnit(clang::ASTContext &context) override {
     m_visitor.TraverseDecl(context.getTranslationUnitDecl());
@@ -96,7 +97,7 @@ public:
 
   clang::PluginASTAction::ActionType getActionType() override {
     return AddBeforeMainAction;
-}
+  }
 };
 } // namespace
 
