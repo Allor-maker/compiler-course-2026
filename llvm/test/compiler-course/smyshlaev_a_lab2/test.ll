@@ -1,5 +1,5 @@
-; RUN: opt -load-pass-plugin %llvmshlibdir/example_LLVM_IR%pluginext\
-; RUN: -passes=example -S %s | FileCheck %s
+; RUN: opt -load-pass-plugin %llvmshlibdir/smyshlaev_a_lab2_LLVM_IR%pluginext\
+; RUN: -passes=mulshift -S %s | FileCheck %s
 
 define i32 @_Z7mul_rhsi(i32 noundef %a) {
 ; CHECK-LABEL: @_Z7mul_rhsi
