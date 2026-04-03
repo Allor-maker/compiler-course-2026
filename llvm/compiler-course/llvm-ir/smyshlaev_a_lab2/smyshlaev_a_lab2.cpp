@@ -18,7 +18,6 @@ struct MulShiftReplacePass : llvm::PassInfoMixin<MulShiftReplacePass> {
         {
           unsigned opCode = BinOp->getOpcode();
           if(opCode != llvm::Instruction::Mul && opCode != llvm::Instruction::UDiv && opCode != llvm::Instruction::SDiv) continue;
-          BinOp->dump();
           auto* lhs = BinOp->getOperand(0);
           auto* rhs = BinOp->getOperand(1);
           auto* f_constant = llvm::dyn_cast<llvm::ConstantInt>(lhs);
@@ -54,7 +53,18 @@ struct MulShiftReplacePass : llvm::PassInfoMixin<MulShiftReplacePass> {
                 new_instr = builder.CreateLShr(lhs, shiftConst);
               else if (opCode == llvm::Instruction::SDiv)
               {
-                new_instr = builder.CreateAShr(lhs, shiftConst);
+                if(BinOp->isExact()) {
+                  new_instr = builder.CreateAShr(lhs, shiftConst);
+                } 
+                else {
+                  uint64_t mask_val = (1ULL << shift) - 1;
+                  auto* maskConst = llvm::ConstantInt::get(BinOp->getType(), mask_val);
+                  auto* zeroConst = llvm::ConstantInt::get(BinOp->getType(), 0);
+                  auto* isNeg = builder.CreateICmpSLT(lhs, zeroConst);
+                  auto* adjustedLhs = builder.CreateAdd(lhs, maskConst);
+                  auto* selectedVal = builder.CreateSelect(isNeg, adjustedLhs, lhs);
+                  new_instr = builder.CreateAShr(selectedVal, shiftConst);
+                }
               }
               if(new_instr)
               {
