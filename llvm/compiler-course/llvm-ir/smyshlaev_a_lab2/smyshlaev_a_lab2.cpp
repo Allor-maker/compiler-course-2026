@@ -9,72 +9,72 @@ namespace {
 struct MulShiftReplacePass : llvm::PassInfoMixin<MulShiftReplacePass> {
   llvm::PreservedAnalyses run(llvm::Function &func,
                               llvm::FunctionAnalysisManager &) {
-    bool Changed = false;
+    bool changed = false;
     for (auto &bb : func) {
       for (auto &instr : llvm::make_early_inc_range(bb)) {
-        if (auto *BinOp = llvm::dyn_cast<llvm::BinaryOperator>(&instr)) {
-          unsigned opCode = BinOp->getOpcode();
+        if (auto *binOp = llvm::dyn_cast<llvm::BinaryOperator>(&instr)) {
+          unsigned opCode = binOp->getOpcode();
           if (opCode != llvm::Instruction::Mul &&
               opCode != llvm::Instruction::UDiv &&
               opCode != llvm::Instruction::SDiv)
             continue;
-          auto *lhs = BinOp->getOperand(0);
-          auto *rhs = BinOp->getOperand(1);
-          auto *f_constant = llvm::dyn_cast<llvm::ConstantInt>(lhs);
-          auto *s_constant = llvm::dyn_cast<llvm::ConstantInt>(rhs);
-          if (!(f_constant || s_constant))
+          auto *lhs = binOp->getOperand(0);
+          auto *rhs = binOp->getOperand(1);
+          auto *lhsConstant = llvm::dyn_cast<llvm::ConstantInt>(lhs);
+          auto *rhsConstant = llvm::dyn_cast<llvm::ConstantInt>(rhs);
+          if (!(lhsConstant || rhsConstant))
             continue;
-          llvm::IRBuilder<> builder(BinOp);
-          if (f_constant) {
-            if (f_constant->getValue().isPowerOf2()) {
-              uint64_t shift = f_constant->getValue().logBase2();
+          llvm::IRBuilder<> builder(binOp);
+          if (lhsConstant) {
+            if (lhsConstant->getValue().isPowerOf2()) {
+              uint64_t shift = lhsConstant->getValue().logBase2();
               auto *shiftConst =
-                  llvm::ConstantInt::get(BinOp->getType(), shift);
+                  llvm::ConstantInt::get(binOp->getType(), shift);
               if (opCode == llvm::Instruction::Mul) {
-                auto *new_instr = builder.CreateShl(rhs, shiftConst);
-                BinOp->replaceAllUsesWith(new_instr);
-                BinOp->eraseFromParent();
-                Changed = true;
+                auto *newInstr = builder.CreateShl(rhs, shiftConst);
+                binOp->replaceAllUsesWith(newInstr);
+                binOp->eraseFromParent();
+                changed = true;
                 continue;
               }
             }
           }
-          if (s_constant) {
-            if (s_constant->getValue().isPowerOf2()) {
-              llvm::Value *new_instr = nullptr;
-              uint64_t shift = s_constant->getValue().logBase2();
+          if (rhsConstant) {
+            if (rhsConstant->getValue().isPowerOf2()) {
+              llvm::Value *newInstr = nullptr;
+              uint64_t shift = rhsConstant->getValue().logBase2();
               auto *shiftConst =
-                  llvm::ConstantInt::get(BinOp->getType(), shift);
+                  llvm::ConstantInt::get(binOp->getType(), shift);
               if (opCode == llvm::Instruction::Mul)
-                new_instr = builder.CreateShl(lhs, shiftConst);
+                newInstr = builder.CreateShl(lhs, shiftConst);
               else if (opCode == llvm::Instruction::UDiv)
-                new_instr = builder.CreateLShr(lhs, shiftConst);
+                newInstr = builder.CreateLShr(lhs, shiftConst);
               else if (opCode == llvm::Instruction::SDiv) {
-                if (BinOp->isExact()) {
-                  new_instr = builder.CreateAShr(lhs, shiftConst);
+                if (binOp->isExact()) {
+                  newInstr = builder.CreateAShr(lhs, shiftConst);
                 } else {
-                  uint64_t mask_val = (1ULL << shift) - 1;
+                  uint64_t maskVal = (1ULL << shift) - 1;
                   auto *maskConst =
-                      llvm::ConstantInt::get(BinOp->getType(), mask_val);
-                  auto *zeroConst = llvm::ConstantInt::get(BinOp->getType(), 0);
+                      llvm::ConstantInt::get(binOp->getType(), maskVal);
+                  auto *zeroConst = llvm::ConstantInt::get(binOp->getType(), 0);
                   auto *isNeg = builder.CreateICmpSLT(lhs, zeroConst);
                   auto *adjustedLhs = builder.CreateAdd(lhs, maskConst);
                   auto *selectedVal =
                       builder.CreateSelect(isNeg, adjustedLhs, lhs);
-                  new_instr = builder.CreateAShr(selectedVal, shiftConst);
+                  newInstr = builder.CreateAShr(selectedVal, shiftConst);
                 }
               }
-              if (new_instr) {
-                BinOp->replaceAllUsesWith(new_instr);
-                BinOp->eraseFromParent();
-                Changed = true;
+              if (newInstr) {
+                binOp->replaceAllUsesWith(newInstr);
+                binOp->eraseFromParent();
+                changed = true;
               }
             }
           }
         }
       }
     }
-    return Changed ? llvm::PreservedAnalyses::none()
+    return changed ? llvm::PreservedAnalyses::none()
                    : llvm::PreservedAnalyses::all();
   }
 
