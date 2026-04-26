@@ -113,7 +113,7 @@ private:
 
 char X86LabLoopUnrollPass::ID = 0;
 
-} // end anonymous namespace
+} // namespace
 
 static RegisterPass<X86LabLoopUnrollPass>
     X("x86-lab-unroll", "X86 Loop Unrolling Lab Pass (Max 5 iters)", false,
