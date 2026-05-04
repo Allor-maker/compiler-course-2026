@@ -1,39 +1,5 @@
 # RUN: llc -load %llvmshlibdir/smyshlaev_a_lab3_BACKEND%pluginext -run-pass=x86-lab-unroll %s -o - | FileCheck %s
 
-# CHECK-LABEL: name: _Z4loopPii
-# CHECK: bb.3.for.body
-# CHECK: ADD32mi
-# CHECK: ADD32mi
-# CHECK: ADD32mi
-# CHECK: ADD32mi
-# CHECK: ADD32mi
-# CHECK: JCC_1
-
-# CHECK-LABEL: name: _Z9no_unrollPii
-# CHECK: bb.4.if.then
-# CHECK: ADD32ri
-# CHECK-NOT: ADD32ri
-# CHECK: bb.5.for.inc
-
-# CHECK-LABEL: name: _Z14complex_unrollPiS_S_i
-# CHECK: bb.3.for.body
-# CHECK: SUB32rm
-# CHECK: ADD32ri
-# CHECK: IMUL32rm
-# CHECK: SUB32rm
-# CHECK: ADD32ri
-# CHECK: IMUL32rm
-# CHECK: SUB32rm
-# CHECK: ADD32ri
-# CHECK: IMUL32rm
-# CHECK: SUB32rm
-# CHECK: ADD32ri
-# CHECK: IMUL32rm
-# CHECK: SUB32rm
-# CHECK: ADD32ri
-# CHECK: IMUL32rm
-# CHECK: JCC_1
-
 --- |
   define dso_local void @_Z4loopPii(ptr %a, i32 %n) {
   entry:
@@ -113,6 +79,16 @@
     br i1 %exitcond.not, label %for.cond.cleanup, label %for.body
   }
 ...
+
+# CHECK-LABEL: name: _Z4loopPii
+# CHECK: bb.3.for.body
+# CHECK: ADD32mi
+# CHECK: ADD32mi
+# CHECK: ADD32mi
+# CHECK: ADD32mi
+# CHECK: ADD32mi
+# CHECK: JCC_1
+
 ---
 name:            _Z4loopPii
 tracksRegLiveness: true
@@ -159,6 +135,13 @@ body:             |
     JCC_1 %bb.2, 4, implicit killed $eflags
     JMP_1 %bb.3
 ...
+
+# CHECK-LABEL: name: _Z9no_unrollPii
+# CHECK: bb.4.if.then
+# CHECK: ADD32ri
+# CHECK-NOT: ADD32ri
+# CHECK: bb.5.for.inc
+
 ---
 name:            _Z9no_unrollPii
 tracksRegLiveness: true
@@ -218,6 +201,26 @@ body:             |
     JCC_1 %bb.2, 4, implicit killed $eflags
     JMP_1 %bb.3
 ...
+
+# CHECK-LABEL: name: _Z14complex_unrollPiS_S_i
+# CHECK: bb.3.for.body
+# CHECK: SUB32rm
+# CHECK: ADD32ri
+# CHECK: IMUL32rm
+# CHECK: SUB32rm
+# CHECK: ADD32ri
+# CHECK: IMUL32rm
+# CHECK: SUB32rm
+# CHECK: ADD32ri
+# CHECK: IMUL32rm
+# CHECK: SUB32rm
+# CHECK: ADD32ri
+# CHECK: IMUL32rm
+# CHECK: SUB32rm
+# CHECK: ADD32ri
+# CHECK: IMUL32rm
+# CHECK: JCC_1
+
 ---
 name:            _Z14complex_unrollPiS_S_i
 tracksRegLiveness: true
